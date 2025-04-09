@@ -1,0 +1,269 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+local Window = Fluent:CreateWindow({
+    Title = "Fluent " .. Fluent.Version,
+    SubTitle = "by dawid",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+local Tabs = {
+    ScriptHub = Window:AddTab({ Title = "Script Hub", Icon = "leaf" }),
+    AutoFarm = Window:AddTab({ Title = "Auto Farm", Icon = "money" }),
+    Visuals = Window:AddTab({ Title = "UI Visual", Icon = "paintbrush" }),
+    AutoBuy = Window:AddTab({ Title = "Auto Buy", Icon = "shopping-cart" })
+}
+
+-- AUTOFARM TAB
+do
+    local clickFunctionalityActive = false
+    local updraftToggleActive = false  -- Updraft button toggle variable
+
+    -- Toggle for moving RingPickups and RingSpawns directly to the player
+    local MoveRingItemsToggle = Tabs.AutoFarm:AddToggle("MoveRingItems", 
+    {
+        Title = "Toggle Move RingPickups and RingSpawns to Player",
+        Description = "Enable to teleport RingPickups and RingSpawns to the player's position.",
+        Default = false,
+        Callback = function(state)
+            clickFunctionalityActive = state
+            
+            if state then
+                print("Moving RingPickups and RingSpawns to Player Enabled")
+
+                spawn(function()
+                    local player = game.Players.LocalPlayer
+                    local character = player.Character or player.CharacterAdded:Wait()
+                    local upperTorso = character:WaitForChild("UpperTorso")
+
+                    while clickFunctionalityActive do
+                        local success, err = pcall(function()  -- Error handling with pcall
+                            local interiors = workspace:FindFirstChild("Interiors")
+                            if not interiors or interiors:GetChildren() == 0 then
+                                print("No items found in workspace.Interiors!")
+                                return
+                            end
+
+                            local blossomShakedownInterior = interiors:FindFirstChild("BlossomShakedownInterior")
+                            if not blossomShakedownInterior then
+                                print("BlossomShakedownInterior not found!")
+                                return
+                            end
+
+                            print("BlossomShakedownInterior model found.")
+                            
+                            -- Attempt to teleport to the Collision part in GliderInteractions
+                            local gliderInteractions = blossomShakedownInterior:FindFirstChild("GliderInteractions")
+                            local gliderTeleported = false
+
+                            if gliderInteractions then
+                                local paraglider = gliderInteractions:FindFirstChild("spring_2025_default_paraglider")
+                                if paraglider then
+                                    local paragliderCollision = paraglider:FindFirstChild("Collision")
+                                    if paragliderCollision then
+                                        -- Teleport character to the paraglider collision part
+                                        character:SetPrimaryPartCFrame(paragliderCollision.CFrame)
+                                        print("Teleported character to Paraglider Collision part.")
+                                        gliderTeleported = true
+                                        wait(0.5)  -- Wait for a moment after teleporting
+                                    else
+                                        print("Collision part not found in the spring_2025_default_paraglider.")
+                                    end
+                                else
+                                    print("spring_2025_default_paraglider not found in GliderInteractions.")
+                                end
+                            else
+                                print("GliderInteractions not found in BlossomShakedownInterior.")
+                            end
+
+                            -- Attempt to teleport to the InteriorOrigin next
+                            local interiorOrigin = blossomShakedownInterior:FindFirstChild("InteriorOrigin")
+                            local interiorTeleported = false
+
+                            if interiorOrigin then
+                                character:SetPrimaryPartCFrame(interiorOrigin.CFrame)
+                                print("Teleported character to Interior Origin.")
+                                interiorTeleported = true
+                                wait(0.5)  -- Wait for a moment after teleporting
+                            else
+                                print("InteriorOrigin not found in BlossomShakedownInterior.")
+                            end
+
+                            -- If both teleportations are successful, handle moving other items
+                            if gliderTeleported and interiorTeleported then
+                                -- Now handle the teleportation of the other parts
+                                -- Handle RingPickups
+                                local ringPickups = blossomShakedownInterior:FindFirstChild("RingPickups")
+                                if ringPickups then
+                                    for _, ringPickup in ipairs(ringPickups:GetChildren()) do
+                                        if ringPickup:IsA("Model") then
+                                            for _, part in ipairs(ringPickup:GetChildren()) do
+                                                if part:IsA("BasePart") then
+                                                    part.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
+                                                    part.Transparency = 0
+                                                    print("Teleported Part from RingPickups Model:", part.Name, "to player position.")
+                                                end
+                                            end
+                                        elseif ringPickup:IsA("BasePart") then
+                                            ringPickup.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
+                                            ringPickup.Transparency = 0
+                                            print("Teleported Part from RingPickups:", ringPickup.Name, "to player position.")
+                                        end
+                                    end
+                                else
+                                    print("RingPickups not found in BlossomShakedownInterior!")
+                                end
+
+                                -- Handle RingSpawns
+                                local ringSpawns = blossomShakedownInterior:FindFirstChild("RingSpawns")
+                                if ringSpawns then
+                                    for _, ringSpawn in ipairs(ringSpawns:GetChildren()) do
+                                        if ringSpawn:IsA("Model") then
+                                            for _, part in ipairs(ringSpawn:GetChildren()) do
+                                                if part:IsA("BasePart") then
+                                                    part.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
+                                                    part.Transparency = 0
+                                                    print("Teleported Part from RingSpawns Model:", part.Name, "to player position.")
+                                                end
+                                            end
+                                        elseif ringSpawn:IsA("BasePart") then
+                                            ringSpawn.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
+                                            ringSpawn.Transparency = 0
+                                            print("Teleported Part from RingSpawns:", ringSpawn.Name, "to player position.")
+                                        end
+                                    end
+                                else
+                                    print("RingSpawns not found in BlossomShakedownInterior!")
+                                end
+
+                                -- Handle all Collider parts within BlossomShakedownInterior
+                                for _, child in ipairs(blossomShakedownInterior:GetChildren()) do
+                                    if child:IsA("BasePart") and child.Name:lower():find("collider") then
+                                        child.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
+                                        print("Teleported Collider part:", child.Name, "to player position.")
+                                    end
+                                end
+                            else
+                                print("Waiting for successful teleportation to both Glider and InteriorOrigin before moving items.")
+                            end
+
+                            -- Logic to teleport to CherryBlossomViewingArea 
+                            local timeLabel = player.PlayerGui.MinigameInGameApp.Body.Left.Container.ValueLabel
+                            if timeLabel then
+                                print("Current timer value:", timeLabel.Text) -- Debug print to see current time
+                                if timeLabel.Text == "00:10" then
+                                    -- Check for MainMap!Default existence
+                                    local mainMapDefault = workspace.Interiors:FindFirstChild("MainMap!Default")
+                                    if mainMapDefault then
+                                        -- Check for CherryBlossomViewingArea existence
+                                        local cherryBlossomViewingArea = workspace.StaticMap.Springfest2025:FindFirstChild("CherryBlossomViewingArea")
+                                        if cherryBlossomViewingArea then
+                                            character:SetPrimaryPartCFrame(cherryBlossomViewingArea.CFrame)
+                                            print("Teleported character to Cherry Blossom Viewing Area.")
+                                        else
+                                            print("Cherry Blossom Viewing Area not found.")
+                                        end
+                                    else
+                                        print("MainMap!Default not found.")
+                                    end
+                                end
+                            else
+                                print("Time label not found.")
+                            end
+
+                        end)
+
+                        if not success then
+                            print("Error: " .. tostring(err))  -- Print any caught errors
+                        end
+
+                        wait(1) -- Adjust the wait time as needed
+                    end
+                end)
+
+                print("RingItems Movement Started")
+            else
+                print("Moving RingPickups and RingSpawns to Player Disabled")
+            end
+        end 
+    })
+
+    -- Toggle for Updraft Button Activation
+    local UpdraftToggle = Tabs.AutoFarm:AddToggle("UpdraftButtonActivation", 
+    {
+        Title = "Toggle Updraft Button Activation",
+        Description = "Enable or disable the activation of the Updraft Button.",
+        Default = false,
+        Callback = function(state)
+            updraftToggleActive = state
+            
+            if state then
+                print("Updraft Button Activation Enabled")
+
+                spawn(function()
+                    local player = game.Players.LocalPlayer
+                    local playerGui = player:WaitForChild("PlayerGui")
+
+                    while updraftToggleActive do
+                        local updraftButton = playerGui:FindFirstChild("MinigameHotbarApp")
+                            and playerGui.MinigameHotbarApp:FindFirstChild("Hotbar")
+                            and playerGui.MinigameHotbarApp.Hotbar:FindFirstChild("UpdraftButton")
+                            and playerGui.MinigameHotbarApp.Hotbar.UpdraftButton:FindFirstChild("Button")
+
+                        if updraftButton then
+                            pcall(function()
+                                for _, connection in pairs(getconnections(updraftButton.MouseButton1Down)) do
+                                    connection:Fire()
+                                end
+                                for _, connection in pairs(getconnections(updraftButton.MouseButton1Click)) do
+                                    connection:Fire()
+                                end
+                                for _, connection in pairs(getconnections(updraftButton.MouseButton1Up)) do
+                                    connection:Fire()
+                                end
+                            end)
+                            print("Updraft Button activated.")
+                        else
+                            print("Updraft Button not found in PlayerGui!")
+                        end
+
+                        wait(1) -- Check every second
+                    end
+                end)
+
+                print("Updraft Button Functionality Started")
+            else
+                print("Updraft Button Activation Disabled")
+            end
+        end 
+    })
+end
+
+-- Initialize SaveManager and InterfaceManager
+do
+    SaveManager:SetLibrary(Fluent)
+    InterfaceManager:SetLibrary(Fluent)
+
+    SaveManager:IgnoreThemeSettings()
+    SaveManager:SetIgnoreIndexes({})
+    InterfaceManager:SetFolder("FluentScriptHub")
+    InterfaceManager:SetFolder("FluentScriptHub/specific-game")
+
+    InterfaceManager:BuildInterfaceSection(Tabs.Visuals)
+    SaveManager:BuildConfigSection(Tabs.Visuals)
+end
+
+-- Notify the user that the script is loaded
+Fluent:Notify({
+    Title = "Fluent",
+    Content = "The script has been successfully loaded.",
+    Duration = 8
+})
+
+-- Load the autoload config if there is one
+SaveManager:LoadAutoloadConfig()
