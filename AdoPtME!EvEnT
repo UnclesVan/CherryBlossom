@@ -87,7 +87,7 @@ end
 
 -- Connect the Idled event to the anti-AFK function
 Player.Idled:Connect(onIdled)
-
+--test
 
 
 
