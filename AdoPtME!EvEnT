@@ -23,6 +23,129 @@ local Tabs = {
 do
     local clickFunctionalityActive = false
     local updraftToggleActive = false  -- Updraft button toggle variable
+    local circleTeleportationActive = false  -- Circle teleportation toggle variable
+    local squareRotationActive = false  -- Square rotation toggle variable
+    local teleportDelay = 1  -- Default delay seconds for teleportation
+    local squareDistance = 15  -- Distance from character to the corners of the square
+
+    -- Input for teleportation delay
+    local delayInput = Tabs.AutoFarm:AddInput("TeleportDelayInput", {
+        Title = "Teleport Delay (seconds)",
+        Placeholder = "Enter delay in seconds",
+        RemoveTextAfterFocusLost = true,
+        Callback = function(inputValue)
+            teleportDelay = tonumber(inputValue) or 1  -- Default to 1 if invalid input
+            print("Teleport delay set to:", teleportDelay)
+        end,
+    })
+
+    -- Toggle for Circle Teleportation
+    local CircleToggle = Tabs.AutoFarm:AddToggle("CircleTeleportation", 
+    {
+        Title = "Toggle Circle Teleportation",
+        Description = "Enable or disable teleportation to the Ring in BlossomShakedownJoinZone.",
+        Default = false,
+        Callback = function(state)
+            circleTeleportationActive = state
+            
+            if state then
+                print("Circle Teleportation Enabled")
+
+                spawn(function() 
+                    local player = game.Players.LocalPlayer
+
+                    while circleTeleportationActive do
+                        local targetRing = workspace:FindFirstChild("Interiors") 
+                                           and workspace.Interiors:FindFirstChild("MainMap!Default")
+                                           and workspace.Interiors["MainMap!Default"]:FindFirstChild("BlossomShakedownJoinZone")
+                                           and workspace.Interiors["MainMap!Default"].BlossomShakedownJoinZone:FindFirstChild("Ring")
+
+                        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            if targetRing then
+                                player.Character.HumanoidRootPart.CFrame = targetRing.CFrame
+                                print("Teleported to Ring in BlossomShakedownJoinZone.")
+                            else
+                                print("Ring in BlossomShakedownJoinZone not found!")
+                            end
+                        else
+                            print("HumanoidRootPart not found!")
+                        end
+
+                        wait(teleportDelay)  -- Wait according to the specified delay
+                    end
+                end)
+                
+                print("Circle Teleportation Started")
+            else
+                print("Circle Teleportation Disabled")
+            end
+        end 
+    })
+
+    -- Toggle for Square Rotation of RingSpawns
+    local SquareRotationToggle = Tabs.AutoFarm:AddToggle("SquareRotation", 
+    {
+        Title = "Toggle Square Rotation of RingSpawns",
+        Description = "Enable to rotate the RingSpawns around the character in a square pattern.",
+        Default = false,
+        Callback = function(state)
+            squareRotationActive = state
+            
+            if state then
+                print("Square Rotation Enabled")
+
+                spawn(function()
+                    local player = game.Players.LocalPlayer
+                    local character = player.Character or player.CharacterAdded:Wait()
+                    local upperTorso = character:WaitForChild("UpperTorso")
+
+                    while squareRotationActive do
+                        local interiors = workspace:FindFirstChild("Interiors")
+                        if interiors then
+                            local blossomShakedownInterior = interiors:FindFirstChild("BlossomShakedownInterior")
+                            if blossomShakedownInterior then
+                                local ringSpawns = blossomShakedownInterior:FindFirstChild("RingSpawns")
+                                if ringSpawns then
+                                    local characterPosition = upperTorso.Position
+
+                                    -- Define square corner positions
+                                    local offsets = {
+                                        Vector3.new(squareDistance, 0, squareDistance),  -- Top right
+                                        Vector3.new(-squareDistance, 0, squareDistance),  -- Top left
+                                        Vector3.new(-squareDistance, 0, -squareDistance), -- Bottom left
+                                        Vector3.new(squareDistance, 0, -squareDistance)   -- Bottom right
+                                    }
+
+                                    -- Move each RingSpawn to the next position in the offsets array
+                                    for i, ringSpawn in ipairs(ringSpawns:GetChildren()) do
+                                        if ringSpawn:IsA("BasePart") then
+                                            -- Calculate the new position based on the square pattern
+                                            local newPosition = characterPosition + offsets[(i % #offsets) + 1]
+                                            ringSpawn.Position = newPosition
+                                            ringSpawn.Transparency = 0 -- Ensure the part is visible
+                                            print("Moved RingSpawn:", ringSpawn.Name, "to position:", newPosition)
+                                        end
+                                    end
+                                else
+                                    print("RingSpawns not found in BlossomShakedownInterior!")
+                                end
+                            else
+                                print("BlossomShakedownInterior not found!")
+                            end
+                        else
+                            print("No items found in workspace.Interiors!")
+                        end
+
+                        wait(teleportDelay) -- Adjust the wait time for how fast you want it to rotate
+                    end
+                end)
+
+                print("Square Rotation Functionality Started")
+            else
+                print("Square Rotation Disabled")
+            end
+        end 
+    })
 
     -- Toggle for moving RingPickups and RingSpawns directly to the player
     local MoveRingItemsToggle = Tabs.AutoFarm:AddToggle("MoveRingItems", 
@@ -56,11 +179,53 @@ do
                             end
 
                             print("BlossomShakedownInterior model found.")
-                            
-                            -- Attempt to teleport to the Collision part in GliderInteractions
-                            local gliderInteractions = blossomShakedownInterior:FindFirstChild("GliderInteractions")
-                            local gliderTeleported = false
 
+                            -- Handle RingPickups
+                            local ringPickups = blossomShakedownInterior:FindFirstChild("RingPickups")
+                            if ringPickups then
+                                for _, ringPickup in ipairs(ringPickups:GetChildren()) do
+                                    if ringPickup:IsA("Model") then
+                                        for _, part in ipairs(ringPickup:GetChildren()) do
+                                            if part:IsA("BasePart") then
+                                                part.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
+                                                part.Transparency = 0
+                                                print("Teleported Part from RingPickups Model:", part.Name, "to player position.")
+                                            end
+                                        end
+                                    elseif ringPickup:IsA("BasePart") then
+                                        ringPickup.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
+                                        ringPickup.Transparency = 0
+                                        print("Teleported Part from RingPickups:", ringPickup.Name, "to player position.")
+                                    end
+                                end
+                            else
+                                print("RingPickups not found in BlossomShakedownInterior!")
+                            end
+
+                            -- Handle RingSpawns as well
+                            local ringSpawns = blossomShakedownInterior:FindFirstChild("RingSpawns")
+                            if ringSpawns then
+                                for _, ringSpawn in ipairs(ringSpawns:GetChildren()) do
+                                    if ringSpawn:IsA("Model") then
+                                        for _, part in ipairs(ringSpawn:GetChildren()) do
+                                            if part:IsA("BasePart") then
+                                                part.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
+                                                part.Transparency = 0
+                                                print("Teleported Part from RingSpawns Model:", part.Name, "to player position.")
+                                            end
+                                        end
+                                    elseif ringSpawn:IsA("BasePart") then
+                                        ringSpawn.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
+                                        ringSpawn.Transparency = 0
+                                        print("Teleported Part from RingSpawns:", ringSpawn.Name, "to player position.")
+                                    end
+                                end
+                            else
+                                print("RingSpawns not found in BlossomShakedownInterior!")
+                            end
+
+                            -- Glider teleportation logic
+                            local gliderInteractions = blossomShakedownInterior:FindFirstChild("GliderInteractions")
                             if gliderInteractions then
                                 local paraglider = gliderInteractions:FindFirstChild("spring_2025_default_paraglider")
                                 if paraglider then
@@ -69,8 +234,17 @@ do
                                         -- Teleport character to the paraglider collision part
                                         character:SetPrimaryPartCFrame(paragliderCollision.CFrame)
                                         print("Teleported character to Paraglider Collision part.")
-                                        gliderTeleported = true
                                         wait(0.5)  -- Wait for a moment after teleporting
+
+                                        -- After teleporting to the glider, teleport to the Interior Origin
+                                        local interiorOrigin = blossomShakedownInterior:FindFirstChild("InteriorOrigin")
+                                        if interiorOrigin then
+                                            character:SetPrimaryPartCFrame(interiorOrigin.CFrame)
+                                            print("Teleported character to Interior Origin.")
+                                            wait(0.5)  -- Wait for a moment after teleporting
+                                        else
+                                            print("InteriorOrigin not found in BlossomShakedownInterior.")
+                                        end
                                     else
                                         print("Collision part not found in the spring_2025_default_paraglider.")
                                     end
@@ -79,101 +253,6 @@ do
                                 end
                             else
                                 print("GliderInteractions not found in BlossomShakedownInterior.")
-                            end
-
-                            -- Attempt to teleport to the InteriorOrigin next
-                            local interiorOrigin = blossomShakedownInterior:FindFirstChild("InteriorOrigin")
-                            local interiorTeleported = false
-
-                            if interiorOrigin then
-                                character:SetPrimaryPartCFrame(interiorOrigin.CFrame)
-                                print("Teleported character to Interior Origin.")
-                                interiorTeleported = true
-                                wait(0.5)  -- Wait for a moment after teleporting
-                            else
-                                print("InteriorOrigin not found in BlossomShakedownInterior.")
-                            end
-
-                            -- If both teleportations are successful, handle moving other items
-                            if gliderTeleported and interiorTeleported then
-                                -- Now handle the teleportation of the other parts
-                                -- Handle RingPickups
-                                local ringPickups = blossomShakedownInterior:FindFirstChild("RingPickups")
-                                if ringPickups then
-                                    for _, ringPickup in ipairs(ringPickups:GetChildren()) do
-                                        if ringPickup:IsA("Model") then
-                                            for _, part in ipairs(ringPickup:GetChildren()) do
-                                                if part:IsA("BasePart") then
-                                                    part.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
-                                                    part.Transparency = 0
-                                                    print("Teleported Part from RingPickups Model:", part.Name, "to player position.")
-                                                end
-                                            end
-                                        elseif ringPickup:IsA("BasePart") then
-                                            ringPickup.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
-                                            ringPickup.Transparency = 0
-                                            print("Teleported Part from RingPickups:", ringPickup.Name, "to player position.")
-                                        end
-                                    end
-                                else
-                                    print("RingPickups not found in BlossomShakedownInterior!")
-                                end
-
-                                -- Handle RingSpawns
-                                local ringSpawns = blossomShakedownInterior:FindFirstChild("RingSpawns")
-                                if ringSpawns then
-                                    for _, ringSpawn in ipairs(ringSpawns:GetChildren()) do
-                                        if ringSpawn:IsA("Model") then
-                                            for _, part in ipairs(ringSpawn:GetChildren()) do
-                                                if part:IsA("BasePart") then
-                                                    part.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
-                                                    part.Transparency = 0
-                                                    print("Teleported Part from RingSpawns Model:", part.Name, "to player position.")
-                                                end
-                                            end
-                                        elseif ringSpawn:IsA("BasePart") then
-                                            ringSpawn.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
-                                            ringSpawn.Transparency = 0
-                                            print("Teleported Part from RingSpawns:", ringSpawn.Name, "to player position.")
-                                        end
-                                    end
-                                else
-                                    print("RingSpawns not found in BlossomShakedownInterior!")
-                                end
-
-                                -- Handle all Collider parts within BlossomShakedownInterior
-                                for _, child in ipairs(blossomShakedownInterior:GetChildren()) do
-                                    if child:IsA("BasePart") and child.Name:lower():find("collider") then
-                                        child.Position = upperTorso.Position + Vector3.new(0, 5, 0) -- Teleport
-                                        print("Teleported Collider part:", child.Name, "to player position.")
-                                    end
-                                end
-                            else
-                                print("Waiting for successful teleportation to both Glider and InteriorOrigin before moving items.")
-                            end
-
-                            -- Logic to teleport to CherryBlossomViewingArea 
-                            local timeLabel = player.PlayerGui.MinigameInGameApp.Body.Left.Container.ValueLabel
-                            if timeLabel then
-                                print("Current timer value:", timeLabel.Text) -- Debug print to see current time
-                                if timeLabel.Text == "00:10" then
-                                    -- Check for MainMap!Default existence
-                                    local mainMapDefault = workspace.Interiors:FindFirstChild("MainMap!Default")
-                                    if mainMapDefault then
-                                        -- Check for CherryBlossomViewingArea existence
-                                        local cherryBlossomViewingArea = workspace.StaticMap.Springfest2025:FindFirstChild("CherryBlossomViewingArea")
-                                        if cherryBlossomViewingArea then
-                                            character:SetPrimaryPartCFrame(cherryBlossomViewingArea.CFrame)
-                                            print("Teleported character to Cherry Blossom Viewing Area.")
-                                        else
-                                            print("Cherry Blossom Viewing Area not found.")
-                                        end
-                                    else
-                                        print("MainMap!Default not found.")
-                                    end
-                                end
-                            else
-                                print("Time label not found.")
                             end
 
                         end)
